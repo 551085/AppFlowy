@@ -1,0 +1,61 @@
+name: Build AppFlowy Manual
+
+on:
+  workflow_dispatch:  # ← permite ejecutarlo manualmente desde la UI
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.4'
+          channel: 'stable'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.85'
+          components: clippy, rustfmt
+
+      - name: Install cargo-make
+        run: cargo install cargo-make
+
+      - name: Build Rust backend
+        working-directory: frontend
+        run: cargo make --profile production-desktop build-windows
+
+      - name: Flutter pub get
+        working-directory: frontend/appflowy_flutter
+        run: flutter pub get
+
+      - name: Build runner
+        working-directory: frontend/appflowy_flutter
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build Windows
+        working-directory: frontend/appflowy_flutter
+        run: flutter build windows --release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppFlowy-Windows
+          path: frontend/appflowy_flutter/build/windows/x64/runner/Release/
+          retention-days: 7
+```
+
+---
+
+## Pasos para activarlo
+```
+1. En tu fork → carpeta .github/workflows/
+2. Crea el archivo build_manual.yml con el contenido anterior
+3. Haz commit y push
+4. Ve a Actions → "Build AppFlowy Manual"
+5. Botón "Run workflow" → Run
